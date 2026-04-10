@@ -31,9 +31,21 @@
                 </p>
 
                 <div id="inputSection" class="space-y-4">
+                    <!-- API Key Setup Box -->
+                    <div id="apiKeySetup" class="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-400 rounded-xl p-4 mb-4" style="display: none;">
+                        <p class="text-yellow-900 text-sm font-bold mb-3 flex items-center gap-2">
+                            <span class="text-xl">🔑</span> Enter Your Merriam-Webster API Key
+                        </p>
+                        <p class="text-yellow-800 text-xs mb-3">Get your free key at <a href="https://dictionaryapi.com/" target="_blank" class="underline font-bold">dictionaryapi.com</a></p>
+                        <div class="flex gap-2">
+                            <input type="text" id="userApiKeyInput" placeholder="Paste your API key here" class="flex-1 px-3 py-2 border-2 border-yellow-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-semibold"/>
+                            <button id="saveUserApiKey" class="bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-yellow-700 transition">Save</button>
+                        </div>
+                    </div>
+
                     <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-4 mb-4">
                         <p class="text-green-800 text-sm font-semibold flex items-center gap-2">
-                            <span class="text-xl">✓</span> Ready! Words and API key are preloaded. Tap Start to begin.
+                            <span class="text-xl">✓</span> Ready! Words are preloaded. Tap Start to begin.
                         </p>
                     </div>
 
@@ -154,6 +166,7 @@
     </div>
 
     <script>
+        // NO HARDCODED API KEY - Users enter their own
         var PRELOADED_API_KEY = localStorage.getItem('user_api_key') || '';
         var PRELOADED_WORDS = [
 'cat', 'dog', 'sun', 'bed', 'hat',
@@ -231,7 +244,7 @@
 'mobility', 'service', 'tricycle', 'sparrow', 'curtain',
 'thunderous', 'reaching', 'retrieve', 'weatherproof', 'caption',
 'drench', 'sculpture', 'arson', 'accident', 'crawled',
-'eﬀort', 'garbage', 'legitimate', 'gauge', 'visible',
+'effort', 'garbage', 'legitimate', 'gauge', 'visible',
 'unexpected', 'ethnic', 'organize', 'geologist', 'avenue',
 'drought', 'historian', 'duration', 'relieve', 'orchestra',
 'abduct', 'extreme', 'pentagon', 'smudge', 'errant',
@@ -255,7 +268,7 @@
 'sensitive', 'aquarium', 'hostile', 'dynasty', 'teenagers',
 'compound', 'adequate', 'lagoon', 'economy', 'horizontal',
 'studious', 'ceremony', 'baggage', 'custodian', 'tardy',
-'diﬀerence', 'particle', 'scheme', 'gasoline', 'jealous',
+'difference', 'particle', 'scheme', 'gasoline', 'jealous',
 'keyboard', 'scenery', 'interview', 'tradition', 'digestible',
 'frequent', 'awareness', 'valuable', 'spacecraft', 'alien',
 'suitable', 'integrity', 'abilities', 'athlete', 'delivered',
@@ -287,6 +300,9 @@
         var elements = {
             inputSection: document.getElementById('inputSection'),
             practiceSection: document.getElementById('practiceSection'),
+            apiKeySetup: document.getElementById('apiKeySetup'),
+            userApiKeyInput: document.getElementById('userApiKeyInput'),
+            saveUserApiKey: document.getElementById('saveUserApiKey'),
             fileUpload: document.getElementById('fileUpload'),
             wordInput: document.getElementById('wordInput'),
             loadCustomBtn: document.getElementById('loadCustomBtn'),
@@ -311,15 +327,30 @@
             resetBtn: document.getElementById('resetBtn')
         };
 
+        // Check if API key exists, if not show setup
+        if (!PRELOADED_API_KEY) {
+            elements.apiKeySetup.style.display = 'block';
+        }
+
+        // Save user's API key
+        elements.saveUserApiKey.addEventListener('click', function() {
+            var key = elements.userApiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('user_api_key', key);
+                apiKey = key;
+                PRELOADED_API_KEY = key;
+                elements.apiKeySetup.style.display = 'none';
+                alert('✅ API key saved! You can now use word definitions.');
+            }
+        });
+
         function loadVoices() {
             availableVoices = window.speechSynthesis.getVoices();
             
-            // Filter for English voices only
             var englishVoices = availableVoices.filter(function(voice) {
                 return voice.lang.startsWith('en');
             });
             
-            // Sort: US English first, then UK, then others
             englishVoices.sort(function(a, b) {
                 if (a.lang === 'en-US' && b.lang !== 'en-US') return -1;
                 if (a.lang !== 'en-US' && b.lang === 'en-US') return 1;
@@ -328,17 +359,14 @@
                 return a.name.localeCompare(b.name);
             });
             
-            // Populate both dropdowns
             [elements.voiceSelect, elements.voiceSelectPractice].forEach(function(select) {
                 select.innerHTML = '';
                 
-                // Add auto option
                 var autoOption = document.createElement('option');
                 autoOption.value = '';
                 autoOption.textContent = 'Auto (Best Available)';
                 select.appendChild(autoOption);
                 
-                // Add voices grouped by language
                 var currentLang = '';
                 englishVoices.forEach(function(voice) {
                     if (voice.lang !== currentLang) {
@@ -357,7 +385,6 @@
                 });
             });
             
-            // Set default to auto
             if (!selectedVoice && englishVoices.length > 0) {
                 var defaultVoice = englishVoices.find(function(v) {
                     return v.lang === 'en-US' && (v.name.includes('Samantha') || v.name.includes('Google'));
@@ -366,7 +393,6 @@
             }
         }
         
-        // Voice selection handlers
         elements.voiceSelect.addEventListener('change', function() {
             var voiceName = this.value;
             if (voiceName) {
@@ -477,11 +503,9 @@
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
                 
-                // Use selected voice or auto-select
                 if (selectedVoice) {
                     utterance.voice = selectedVoice;
                 } else {
-                    // Auto-select best voice
                     var voices = window.speechSynthesis.getVoices();
                     var preferredVoices = ['Samantha', 'Alex', 'Google US English', 'Microsoft David', 'Microsoft Zira'];
                     
@@ -508,7 +532,6 @@
             }
         }
         
-        // Load voices on page load
         if ('speechSynthesis' in window) {
             loadVoices();
             window.speechSynthesis.onvoiceschanged = function() {
@@ -522,10 +545,10 @@
                 return;
             }
 
-            if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
+            if (!apiKey) {
                 meanings[word] = {
                     partOfSpeech: '',
-                    definition: 'API key not configured. Add your Merriam-Webster API key in the code to see definitions.'
+                    definition: 'Please enter your API key above to see definitions. Pronunciation still works!'
                 };
                 displayMeaning(word);
                 return;
@@ -579,7 +602,7 @@
             }
             textToSpeak += meaning.definition;
             
-            if (!meaning.definition.includes('API key not configured')) {
+            if (!meaning.definition.includes('Please enter your API key')) {
                 speakWord(textToSpeak, 0.8);
             }
         }
